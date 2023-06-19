@@ -40,10 +40,104 @@
   Testing the server - run `npm run test-todoServer` command in terminal
  */
 const express = require('express');
+const fs = require('fs');
 const bodyParser = require('body-parser');
 
 const app = express();
+const port = 3000;
+const listedRoutes = {
 
+}
+// middlewares for the app
+// Function to check if a route exists in the Express app
+function checkRouteExists(path, routes) {
+  for (let i = 0; i < routes.length; i++) {
+    const route = routes[i];
+    if (route.route && route.route.path === path) {
+      return true;
+    }
+  }
+  return false;
+}
+app.use((req, res, next) => {
+  // Check if the requested route exists
+  const routeExists = checkRouteExists(req.path, app._router.stack);
+  
+  if (!routeExists) {
+    // If route does not exist, send a 404 Not Found error
+    return res.status(404).send('404 Not Foun.D.Luffy');
+  }
+
+  // If route exists, proceed to the next middleware
+  next();
+});
 app.use(bodyParser.json());
 
+// ************ File Parsing Class *************** //
+// to fetch and save contents of the todo List in persistent memory file
+class FileParser{
+
+  constructor(filepath){
+    this.filepath = filepath;
+    this.fileContents = null;
+    this._fetchContents();
+  }
+
+  _fetchContents(){
+    this.fileContents = fs.readFileSync(this.filepath, "utf-8");
+  }
+  _saveContents(){
+    fs.writeFileSync(this.fileContents);
+  }
+  _splitString(str){
+    let index = str.indexOf(" ");
+    return [str.substring(0,index),str.substring(index+1,str.length)];
+  }
+
+  writeContents(data){
+    // data : It's going to be an object of ID and description of todos with ID being the key of the object.
+    // we will be converting this array into a content string that can be saved to the file.
+    let output = [];
+    for (let id in data){
+      output.push(id.toString() + ' ' + data[id] + '\n');
+    }
+    this.fileContents = output.join('');
+  }
+  readContents(){
+    let output = {};
+    let contents = this.fileContents.split('\n');
+    for (let line of contents){
+      if(line.length > 0){
+        line = line.trim();
+        let [id,desc] = this._splitString(line);
+        output[id] = desc;
+      }
+    }
+    return output;
+  }
+}
+
+let FILE = new FileParser("./todos.txt");
+let TODOS = FILE.readContents();
+
+// app handler functions
+function retrieveTodos(req,res){
+  let output = [];
+  for (let id in TODOS){
+    output.push(TODOS[id]);
+  }
+  res.status(200).json(output);
+}
+
+// app routes
+app.get("/todos", retrieveTodos);
+// app.get("/todos/:id", retrieveTodosById);
+// app.post("/todos", addTodo);
+// app.put("/todos/:id", updateTodo);
+// app.delete("/todos/:id", deleteTodo);
+
+// checking if the HTTP server is working on the given port or not
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+});
 module.exports = app;

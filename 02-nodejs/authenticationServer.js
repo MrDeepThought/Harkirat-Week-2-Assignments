@@ -1,4 +1,4 @@
-/**
+ /**
   You need to create a HTTP server in Node.js which will handle the logic of an authentication server.
   - Don't need to use any database to store the data.
 
@@ -28,10 +28,95 @@
 
   Testing the server - run `npm run test-authenticationServer` command in terminal
  */
-
-const express = require("express")
+// write your logic here, DONT WRITE app.listen(3000) when you're running tests, the tests will automatically start the server
+const express = require("express");
+const bodyParser = require("body-parser");
+const jwt = require("jsonwebtoken"); // auithentication and token generation library
+const SECRETKEY = require('crypto').randomBytes(64).toString('hex'); // this creates a 64 character encryption key that is hexadecimally decoded.
 const PORT = 3000;
 const app = express();
-// write your logic here, DONT WRITE app.listen(3000) when you're running tests, the tests will automatically start the server
 
+/* -------------- Structure of User object -----------------
+{
+  'username':{
+    'password':password,
+    'prop-1':value1,
+    'prop-2':value2,
+    ...
+  }
+}
+ */
+var USERS = [];
+var IDCTR = 1;
+
+// app handler and middleware functions
+app.use(bodyParser.json());
+function isAuthenticated(req,res,next){
+  /*
+  This middleware function validates the user based on username and password*/
+  let {email,password} = req.headers;
+  if (email === undefined && password === undefined){
+    email = req.body.email;
+    password = req.body.password;
+  }
+  let ind = USERS.findIndex(user => {return email in user});
+  if (ind !== -1 && USERS[ind][email]['password'] === password){
+    req.user = USERS[ind];
+    next();
+  }
+  else res.status(401).send("Unauthorized");
+}
+
+function signup(req,res){
+  let {email,password,firstName,lastName} = req.body;
+  let ind = USERS.findIndex(user => {return email in user});
+  if (ind === -1){
+    let user = {};
+    user[email] = {
+      'password':password,
+      'firstName':firstName,
+      'lastName':lastName,
+      'id':IDCTR
+    };
+    IDCTR++;
+    USERS.push(user);
+    // console.log(USERS);
+    res.status(201).send(`Signup successful`);
+  }
+  else res.status(400).send(`400 Bad Request! The username: ${email} already exists`);
+}
+
+function login(req,res){
+  let email = Object.keys(req.user)[0]
+  let userObj = {
+    'email': email,
+    'firstName': req.user[email].firstName,
+    'lastName': req.user[email].lastName,
+    'authToken': req.user[email].id
+  };
+  res.status(200).send(userObj);
+}
+
+function getUsers(req,res){
+  let output = {'users' : USERS.map(user => {
+    let email = Object.keys(user)[0]
+    return {'email':email,'firstName':user[email].firstName,'lastName':user[email].lastName};
+  })};
+  res.status(200).json(output);
+}
+
+// app routes
+app.post("/signup", signup);
+app.post("/login", isAuthenticated, login);
+app.get("/data", isAuthenticated ,getUsers);
+
+// Handling Invalid Routes middleware.
+app.use((req, res, next) => {
+  res.status(404).send("Route not found")
+})
+
+// checking if the HTTP server is working on the given port or not
+// app.listen(PORT, () => {
+//   console.log(`Example app listening on port ${PORT}`)
+// });
 module.exports = app;

@@ -25,8 +25,6 @@ const port = 3000;
 // global constants and variables
 const DIRPATH = path.resolve("files");
 
-// app middlewares
-
 // app handler functions
 function getFiles(req,res){
   fs.readdir(DIRPATH, (err,files) => {
@@ -47,7 +45,7 @@ function getFile(req,res){
       fs.readFile(path.join(DIRPATH,filename),'utf-8', (err,contents) => {
         if (err){
           console.log(err);
-          res.send(500).send("Internal Server Error. Can't open the file!");
+          res.status(500).send("Internal Server Error. Can't open the file!");
         }
         res.status(200).send(contents);
       });
@@ -60,10 +58,6 @@ function getFile(req,res){
 app.get("/files", getFiles);
 app.get("/file/:filename", getFile);
 
-// checking if the HTTP server is working on the given port or not
-// app.listen(port, () => {
-//   console.log(`Example app listening on port ${port}`)
-// });
 app.use((req, res, next) => {
   res.status(404).send("Route not found")
 })

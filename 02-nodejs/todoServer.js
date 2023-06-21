@@ -45,32 +45,7 @@ const bodyParser = require('body-parser');
 
 const app = express();
 const port = 3000;
-const listedRoutes = {
 
-}
-// middlewares for the app
-// Function to check if a route exists in the Express app
-function checkRouteExists(path, routes) {
-  for (let i = 0; i < routes.length; i++) {
-    const route = routes[i];
-    if (route.route && route.route.path === path) {
-      return true;
-    }
-  }
-  return false;
-}
-app.use((req, res, next) => {
-  // Check if the requested route exists
-  const routeExists = checkRouteExists(req.path, app._router.stack);
-  
-  if (!routeExists) {
-    // If route does not exist, send a 404 Not Found error
-    return res.status(404).send('404 Not Foun.D.Luffy');
-  }
-
-  // If route exists, proceed to the next middleware
-  next();
-});
 app.use(bodyParser.json());
 
 // ************ File Parsing Class *************** //
@@ -87,57 +62,126 @@ class FileParser{
     this.fileContents = fs.readFileSync(this.filepath, "utf-8");
   }
   _saveContents(){
-    fs.writeFileSync(this.fileContents);
-  }
-  _splitString(str){
-    let index = str.indexOf(" ");
-    return [str.substring(0,index),str.substring(index+1,str.length)];
+    fs.writeFileSync(this.filepath, this.fileContents);
   }
 
   writeContents(data){
-    // data : It's going to be an object of ID and description of todos with ID being the key of the object.
+    // data : It's going to be an object of ID and todo item/object with various properties (with ID being the key of the object).
     // we will be converting this array into a content string that can be saved to the file.
     let output = [];
     for (let id in data){
-      output.push(id.toString() + ' ' + data[id] + '\n');
+      let todoString = "id,"+id.toString();
+      for (let prop in data[id]){
+        todoString += `,${prop},${data[id][prop]}`;
+      }
+      todoString+='\n';
+      output.push(todoString);
     }
     this.fileContents = output.join('');
+    // console.log(this.fileContents,typeof this.fileContents);
+    this._saveContents();
   }
   readContents(){
     let output = {};
     let contents = this.fileContents.split('\n');
+    // console.log(contents);
     for (let line of contents){
-      if(line.length > 0){
+      if (line.length > 0){
         line = line.trim();
-        let [id,desc] = this._splitString(line);
-        output[id] = desc;
+        line = line.split(',');
+        // console.log(line);
+        let id = NaN;
+        for (let i = 0; i < line.length; i+=2){
+          if (i == 0){
+            output[+line[i+1]] = {};
+            id = +line[i+1];
+          }
+          else{
+            output[id][line[i]] = line[i+1];
+          }
+        }
       }
     }
     return output;
   }
 }
 
+// -----------------------------------------Utility functions
+function getIdCounter(todos){
+  let ctr = 0;
+  let keys = Object.keys(todos).map((id) => {return +id});
+  if (keys.length > 0){
+    ctr = Math.max(...keys);
+  }
+  return ctr;
+}
+
 let FILE = new FileParser("./todos.txt");
 let TODOS = FILE.readContents();
+let IDCTR = getIdCounter(TODOS);
 
-// app handler functions
+// ------------------------------------------App handler functions
 function retrieveTodos(req,res){
   let output = [];
+  // console.log(IDCTR,TODOS);
   for (let id in TODOS){
     output.push(TODOS[id]);
   }
   res.status(200).json(output);
 }
 
-// app routes
+function retrieveTodosById(req,res){
+  let id = req.params.id;
+  // console.log(id,TODOS);
+  if (id in TODOS){
+    console.log(TODOS[id]);
+    return res.status(200).json(TODOS[id]);
+  }
+  else res.status(404).send(`404 Not Foun.D.luffy the todo with ID : ${id}!`);
+}
+
+function addTodo(req,res){
+  let todo = req.body;
+  todo["id"] = ++IDCTR;
+  TODOS[IDCTR] = todo;
+  FILE.writeContents(TODOS);
+  res.status(201).json({"id":IDCTR});
+}
+
+function updateTodo(req,res){
+  let id = req.params.id;
+  // console.log(id in TODOS);
+  if (id in TODOS){
+    let updateTodo = req.body;
+    for (let prop in updateTodo){
+      TODOS[id][prop] = updateTodo[prop];
+    }
+    FILE.writeContents(TODOS);
+    res.status(200).send(`Updated Todo Item with ID : ${id}!`);
+  }
+  else res.status(404).send(`404 Not Found.D.Luffy the todo with ID : ${id}!`);
+}
+
+function deleteTodo(req,res){
+  let id = req.params.id;
+  // console.log(id,TODOS);
+  if (id in TODOS){
+    delete TODOS[id];
+    FILE.writeContents(TODOS);
+    res.status(200).send(`Deleted Todo Item with ID : ${id}!`);
+  }
+  else res.status(404).send(`404 Not Found.D.Luffy the todo with ID : ${id}!`);
+}
+
+// ----------------------------------------------------------------------App routes
 app.get("/todos", retrieveTodos);
-// app.get("/todos/:id", retrieveTodosById);
-// app.post("/todos", addTodo);
-// app.put("/todos/:id", updateTodo);
-// app.delete("/todos/:id", deleteTodo);
+app.get("/todos/:id", retrieveTodosById);
+app.post("/todos", addTodo);
+app.put("/todos/:id", updateTodo);
+app.delete("/todos/:id", deleteTodo);
 
 // checking if the HTTP server is working on the given port or not
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-});
+// app.listen(port, () => {
+//   console.log(`Example app listening on port ${port}`)
+// });
 module.exports = app;

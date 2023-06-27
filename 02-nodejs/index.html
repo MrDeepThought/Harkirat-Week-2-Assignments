@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo</title>
+</head>
+<script>
+    function deleteTodo(id){
+        fetch(`http://localhost:3000/todos/${id}`, {
+                method: "DELETE"
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    console.log("Todo deleted");
+                    // Fetch and update the todos list again
+                    getTodos();
+                } else {
+                    console.log("Failed to delete todo");
+                }
+            });
+    }
+
+    function updateTodo(todo){
+        //create a form in the todo div which needs to be updated
+        let id = todo.id;
+        let todoDiv = document.getElementById('todo-'+id.toString());
+        // console.log(todoDiv);
+        let prevTitle = todo.title
+        let prevDescription = todo.description;
+        todoDiv.innerHTML = "";
+        // creating input tags for taking updated inputs
+        let titleBox = document.createElement('input');
+        let descBox = document.createElement('input');
+        let saveButton = document.createElement('button');
+        titleBox.setAttribute('type','text');
+        descBox.setAttribute('type','text');
+        saveButton.classList.add('save-button');
+        saveButton.textContent = "Save";
+        titleBox.value = prevTitle;
+        descBox.value = prevDescription;
+        //use the updated data to pass to the backend to update the todo
+        saveButton.addEventListener('click', () => {
+            let newTitle = titleBox.value;
+            let newDescription = descBox.value;
+            fetch(`http://localhost:3000/todos/${id}`,{
+                method: "PUT",
+                body: JSON.stringify({
+                    'title': newTitle,
+                    'description': newDescription
+                }),
+                headers: {
+                    "content-type":"application/json"
+                }
+            })
+            .then((res) => {
+                if (res.ok){
+                    getTodos();
+                }
+                else{
+                    console.log("Error while updating!");
+                }
+            })
+        });
+
+        todoDiv.appendChild(titleBox);
+        todoDiv.appendChild(descBox);
+        todoDiv.appendChild(saveButton);
+    }
+
+    function getTodos(){
+        fetch("http://localhost:3000/todos",{
+            method: "GET",
+            headers:{
+                "content-type": "application/json"
+            }
+        })
+        .then((resp) => { return resp.json();})
+        .then((data) => {
+            // clearing the existing todos box
+            // console.log("Inside getTodos function()!");
+            let todoContainer = document.getElementById('todo-container');
+            todoContainer.innerHTML = "";
+
+            // adding tasks into todo container
+            data.forEach(function(todo) {
+                const todoDiv = document.createElement('div');
+                todoDiv.classList.add("todoBox");
+                todoDiv.setAttribute('id','todo-' + todo.id.toString());
+                const titleElement = document.createElement('h2');
+                titleElement.textContent = todo.title;
+                const descriptionElement = document.createElement('p');
+                descriptionElement.textContent = todo.description;
+                const deleteButton = document.createElement('button');
+                deleteButton.classList.add("deletebutton")
+                deleteButton.textContent = "Delete";
+                deleteButton.addEventListener('click', function() {
+                    deleteTodo(todo.id);
+                });
+                const updateButton = document.createElement('button');
+                updateButton.classList.add("update-button");
+                updateButton.textContent = "Update";
+                updateButton.addEventListener('click', function() {
+                    updateTodo(todo);
+                });
+                
+                todoDiv.appendChild(titleElement);
+                todoDiv.appendChild(descriptionElement);
+                todoDiv.appendChild(deleteButton);
+                todoDiv.appendChild(updateButton);
+
+                todoContainer.appendChild(todoDiv);
+            });
+        })
+    }
+
+    function onPress(){
+        let title = document.getElementById('title').value;
+        let desc = document.getElementById('description').value;
+        let data = {
+            'title': title,
+            'description': desc
+        };
+
+        fetch("http://localhost:3000/todos",{
+            method : "POST",
+            body:JSON.stringify(data),
+            headers:{
+                "content-type": "application/json"
+            }
+        })
+        .then((resp) => {
+            return resp.json();
+        })
+        .then(data => {
+            console.log(data);
+            getTodos();
+        })
+        document.getElementById('title').value = "";
+        document.getElementById('description').value = "";
+    }
+</script>
+<body>
+    <h1 style="color:chocolate;text-align:center">Todo App</h1>
+    <div id="add-task-container" style="display: flex; flex-wrap: wrap; align-items: center; flex-direction: column; padding: 20px;background-color: skyblue;">
+        <div style="color:red; font-weight: bolder;"><h2>Add Task</h2></div>
+        
+        <div style="padding: 10px;">
+            <input type="text" name="Title" id="title" placeholder="Title">
+        </div>
+        
+        <div style="padding: 10px;">
+            <input type="text" name="description" id="description" placeholder="Description">
+        </div>
+
+        <div style="padding: 10px;">
+            <button onclick="onPress()">Submit Task</button>
+        </div>
+    </div>
+    <div style="background-color: aquamarine;" id="todo-container" style="display: flex; flex-wrap: wrap; align-items: center; flex-direction: column; padding: 20px;background-color: skyblue;">
+    </div>
+    <script>
+        getTodos();
+    </script>
+</body>
+</html>

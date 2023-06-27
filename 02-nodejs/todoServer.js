@@ -42,12 +42,14 @@
 const express = require('express');
 const fs = require('fs');
 const bodyParser = require('body-parser');
+const path = require('path');
+const cors = require('cors');
 
 const app = express();
 const port = 3000;
 
 app.use(bodyParser.json());
-
+app.use(cors());
 // ************ File Parsing Class *************** //
 // to fetch and save contents of the todo List in persistent memory file
 class FileParser{
@@ -174,6 +176,9 @@ function deleteTodo(req,res){
 }
 
 // ----------------------------------------------------------------------App routes
+app.get('/', (req,res) => {
+  res.sendFile(path.resolve("index.html"));
+})
 app.get("/todos", retrieveTodos);
 app.get("/todos/:id", retrieveTodosById);
 app.post("/todos", addTodo);
@@ -181,7 +186,7 @@ app.put("/todos/:id", updateTodo);
 app.delete("/todos/:id", deleteTodo);
 
 // checking if the HTTP server is working on the given port or not
-// app.listen(port, () => {
-//   console.log(`Example app listening on port ${port}`)
-// });
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+});
 module.exports = app;

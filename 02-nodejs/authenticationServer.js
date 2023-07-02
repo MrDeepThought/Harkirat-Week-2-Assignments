@@ -53,7 +53,8 @@ var IDCTR = 1;
 app.use(bodyParser.json());
 function isAuthenticated(req,res,next){
   /*
-  This middleware function validates the user based on username and password*/
+  This middleware function validates the user based on username and password
+  */
   let {email,password} = req.headers;
   if (email === undefined && password === undefined){
     email = req.body.email;
